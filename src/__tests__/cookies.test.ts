@@ -29,7 +29,7 @@ import moment from 'moment'
 import MockDate from 'mockdate'
 import { testApiHandler } from 'next-test-api-route-handler'
 import setCookieParser from 'set-cookie-parser'
-import { encodeBase64 } from 'src/encoding'
+import { compressEncodeSync, encodeBase64 } from 'src/encoding'
 
 jest.mock('src/config')
 

@@ -41,6 +41,8 @@ const createMockConfig = ({ clientSide }: { clientSide?: boolean } = {}) => {
       sameSite: 'strict',
       secure: true,
       signed: true,
+      merged: false,
+      compression: false,
     },
   }
 }

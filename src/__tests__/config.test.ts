@@ -483,6 +483,8 @@ describe('config: client side', () => {
         sameSite: 'strict',
         secure: true,
         signed: true,
+        merged: false,
+        compression: false,
       },
     }
     setConfig(mockConfig)

@@ -96,6 +96,12 @@ export interface ConfigInput {
     // The base name for the auth cookies.
     name: string
     sameSite: string
+    // Store the cookie in a single cookie instead of two separate cookies.
+    // useful on Firebase Hosting, the cookie is still signed.
+    merged?: boolean
+    // The cookie value is compressed using zlib. This is useful for
+    // reducing the size of the cookie when using the "merged" option.
+    compression?: boolean
   }
   /**
    * When true, will log events.
@@ -121,6 +127,9 @@ export const defaultConfig = {
     sameSite: 'strict',
     secure: true,
     signed: true,
+    // new options
+    merged: false,
+    compression: false,
   },
 }
 
