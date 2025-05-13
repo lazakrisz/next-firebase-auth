@@ -30,6 +30,7 @@ import MockDate from 'mockdate'
 import { testApiHandler } from 'next-test-api-route-handler'
 import setCookieParser from 'set-cookie-parser'
 import { compressEncodeSync, encodeBase64 } from 'src/encoding'
+import { SignatureKind } from 'typescript'
 
 jest.mock('src/config')
 
@@ -1291,6 +1292,255 @@ describe('cookies: setCookie', () => {
         },
       })
     ).resolves.not.toThrow()
+  })
+
+  it('sets the cookie properly when the merged option is used', async () => {
+    expect.assertions(1)
+    const MOCK_COOKIE_NAME = 'myStuff'
+    const MOCK_COOKIE_VALUE = JSON.stringify({ some: 'data' })
+    await testApiHandler({
+      handler: async (req, res) => {
+        const { setCookie } = require('src/cookies')
+        setCookie(
+          MOCK_COOKIE_NAME,
+          MOCK_COOKIE_VALUE,
+          {
+            req,
+            res,
+          },
+          {
+            ...createSetCookieOptions(),
+            merged: true,
+          }
+        )
+        return res.status(200).end()
+      },
+      test: async ({ fetch }) => {
+        const response = await fetch()
+        const setCookiesParsed = parseCookies(
+          response.headers.get('set-cookie')
+        )
+        const setCookieVal = setCookiesParsed.find(
+          (cookie) => cookie.name === MOCK_COOKIE_NAME
+        )
+        expect(setCookieVal).toMatchObject({
+          name: 'myStuff',
+          value: expect.any(String),
+        })
+      },
+    })
+  })
+
+  it('sets the cookie properly using merged option, with expired .sig cookie when signed is enabled', async () => {
+    expect.assertions(5)
+    const MOCK_COOKIE_NAME = 'myStuff'
+    const MOCK_COOKIE_VALUE = JSON.stringify({ some: 'data' })
+    await testApiHandler({
+      handler: async (req, res) => {
+        const { setCookie } = require('src/cookies')
+        setCookie(
+          MOCK_COOKIE_NAME,
+          MOCK_COOKIE_VALUE,
+          {
+            req,
+            res,
+          },
+          {
+            ...createSetCookieOptions(),
+            merged: true,
+            signed: true,
+          }
+        )
+        return res.status(200).end()
+      },
+      test: async ({ fetch }) => {
+        const response = await fetch()
+        const setCookiesParsed = parseCookies(
+          response.headers.get('set-cookie')
+        )
+        const setCookieVal = setCookiesParsed.find(
+          (cookie) => cookie.name === MOCK_COOKIE_NAME
+        )
+
+        const signitureCookie = setCookiesParsed.find(
+          (cookie) => cookie.name === `${MOCK_COOKIE_NAME}.sig` // note .sig
+        )
+
+        expect(setCookieVal).toMatchObject({
+          name: 'myStuff',
+          value: expect.any(String),
+        })
+        expect(signitureCookie).toBeDefined()
+        expect(signitureCookie!.value).toBe('')
+        expect(setCookiesParsed.length).toBe(2)
+        expect(signitureCookie?.expires).toEqual(new Date(0))
+      },
+    })
+  })
+
+  it('sets the cookie using compression', async () => {
+    expect.assertions(1)
+    const MOCK_COOKIE_NAME = 'myStuff'
+    const MOCK_COOKIE_VALUE = JSON.stringify({ some: 'data' })
+    await testApiHandler({
+      handler: async (req, res) => {
+        const { setCookie } = require('src/cookies')
+        setCookie(
+          MOCK_COOKIE_NAME,
+          MOCK_COOKIE_VALUE,
+          {
+            req,
+            res,
+          },
+          {
+            ...createSetCookieOptions(),
+            compression: true,
+          }
+        )
+        return res.status(200).end()
+      },
+      test: async ({ fetch }) => {
+        const response = await fetch()
+        const setCookiesParsed = parseCookies(
+          response.headers.get('set-cookie')
+        )
+        const setCookieVal = setCookiesParsed.find(
+          (cookie) => cookie.name === MOCK_COOKIE_NAME
+        )
+
+        expect(setCookieVal).toMatchObject({
+          name: 'myStuff',
+          value: expect.any(String),
+        })
+      },
+    })
+  })
+
+  it('sets the cookie using merge and compression config', async () => {
+    expect.assertions(1)
+    const MOCK_COOKIE_NAME = 'myStuff'
+    const MOCK_COOKIE_VALUE = JSON.stringify({ some: 'data' })
+    await testApiHandler({
+      handler: async (req, res) => {
+        const { setCookie } = require('src/cookies')
+        setCookie(
+          MOCK_COOKIE_NAME,
+          MOCK_COOKIE_VALUE,
+          {
+            req,
+            res,
+          },
+          {
+            ...createSetCookieOptions(),
+            merged: true,
+            compression: true,
+          }
+        )
+        return res.status(200).end()
+      },
+      test: async ({ fetch }) => {
+        const response = await fetch()
+        const setCookiesParsed = parseCookies(
+          response.headers.get('set-cookie')
+        )
+        const setCookieVal = setCookiesParsed.find(
+          (cookie) => cookie.name === MOCK_COOKIE_NAME
+        )
+
+        expect(setCookieVal).toMatchObject({
+          name: 'myStuff',
+          value: expect.any(String),
+        })
+      },
+    })
+  })
+
+  it('sets the cookie using compression and signed config', async () => {
+    expect.assertions(1)
+    const MOCK_COOKIE_NAME = 'myStuff'
+    const MOCK_COOKIE_VALUE = JSON.stringify({ some: 'data' })
+    await testApiHandler({
+      handler: async (req, res) => {
+        const { setCookie } = require('src/cookies')
+        setCookie(
+          MOCK_COOKIE_NAME,
+          MOCK_COOKIE_VALUE,
+          {
+            req,
+            res,
+          },
+          {
+            ...createSetCookieOptions(),
+            compression: true,
+            signed: true,
+          }
+        )
+        return res.status(200).end()
+      },
+      test: async ({ fetch }) => {
+        const response = await fetch()
+        const setCookiesParsed = parseCookies(
+          response.headers.get('set-cookie')
+        )
+        const setCookieVal = setCookiesParsed.find(
+          (cookie) => cookie.name === MOCK_COOKIE_NAME
+        )
+
+        expect(setCookieVal).toMatchObject({
+          name: 'myStuff',
+          value: expect.any(String),
+        })
+      },
+    })
+  })
+
+  it('sets the cookie using compression, merged and signed config', async () => {
+    expect.assertions(6)
+    const MOCK_COOKIE_NAME = 'myStuff'
+    const MOCK_COOKIE_VALUE = JSON.stringify({ some: 'data' })
+    await testApiHandler({
+      handler: async (req, res) => {
+        const { setCookie } = require('src/cookies')
+        setCookie(
+          MOCK_COOKIE_NAME,
+          MOCK_COOKIE_VALUE,
+          {
+            req,
+            res,
+          },
+          {
+            ...createSetCookieOptions(),
+            compression: true,
+            signed: true,
+            merged: true,
+          }
+        )
+        return res.status(200).end()
+      },
+      test: async ({ fetch }) => {
+        const response = await fetch()
+        const setCookiesParsed = parseCookies(
+          response.headers.get('set-cookie')
+        )
+        const setCookieVal = setCookiesParsed.find(
+          (cookie) => cookie.name === MOCK_COOKIE_NAME
+        )
+
+        const signitureCookie = setCookiesParsed.find(
+          (cookie) => cookie.name === `${MOCK_COOKIE_NAME}.sig` // note .sig
+        )
+
+        expect(setCookieVal).toBeDefined()
+        expect(signitureCookie).toBeDefined()
+        expect(signitureCookie!.value).toBe('')
+        expect(signitureCookie?.expires).toEqual(new Date(0))
+        expect(setCookiesParsed.length).toBe(2)
+        expect(setCookieVal).toMatchObject({
+          name: 'myStuff',
+          value: expect.any(String),
+        })
+      },
+    })
   })
 })
 /**
