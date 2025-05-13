@@ -96,6 +96,7 @@ export const getCookie = (
 
   // old behavior
   if (!merged) {
+    console.log('cookie cookie cookie', req.headers.cookie)
     // https://github.com/pillarjs/cookies#cookiesget-name--options--
     const cookieVal = cookies.get(name, { signed })
     return cookieVal ? decoder(cookieVal) : undefined
@@ -103,49 +104,58 @@ export const getCookie = (
 
   // we restore the cookie here. using unsigned because otherwise it checks if using signed or not
   const cookie = cookies.get(name, { signed: false })
-  const cookieValue = cookie ? compressDecodeSync(cookie) : undefined
+  const cookieValue = cookie ? decoder(cookie) : undefined
+  console.log('cookievalue cookie value', cookieValue)
   const separator = '|-|'
 
   const hasSeparator = cookieValue?.includes(separator)
 
+  console.log('hasSeparator', hasSeparator)
   // if the cookie value has no separator we fall back to the old way
   if (!hasSeparator) {
     // https://github.com/pillarjs/cookies#cookiesget-name--options--
     const cookieVal = cookies.get(name, { signed })
-    return cookieVal ? compressDecodeSync(cookieVal) : undefined
+    return cookieVal ? decoder(cookieVal) : undefined
   }
 
   const primaryCookieValue = cookieValue?.split(separator)[0]
   let signature = cookieValue?.split(separator)[1]
 
+  // if the cookie is signed and we havent been able to extract the separator from the cookie
+  // we need to get the signature from the cookie
   if (!signature && signed) {
-    // if the cookie is signed, we need to get the signature from the cookie
     const signatureCookie = cookies.get(`${name}.sig`, { signed: false })
     if (signatureCookie) {
       signature = signatureCookie
     }
   }
 
+  const encoder = compression ? compressEncodeSync : encodeBase64
+
+  console.log('oldcookie', cookie, encoder(primaryCookieValue))
+
   // restore the signature onto the cookie
   const oldCookie = `${name}=${cookie}`
   const newCookie = `${name}=${
-    primaryCookieValue ? compressEncodeSync(primaryCookieValue) : ''
+    primaryCookieValue ? encoder(primaryCookieValue) : ''
   }`
 
   const replaced = req.headers.cookie?.replace(oldCookie, newCookie)
   if (req.headers.cookie) {
     req.headers.cookie = replaced
-    req.headers.cookie += `; ${name}.sig=${signature}`
+    req.headers.cookie += ` ${name}.sig=${signature};`
   }
-  // req.cookies[name] = realCookie ? encodeBase64(realCookie) : realCookie; // originally we hashed the encoded value
-  // req.cookies[`${name}.sig`] = signature;
+
+  console.log('current cookie headers', req.headers.cookie)
 
   // https://github.com/pillarjs/cookies#cookiesget-name--options--
   const cookieVal = createCookieMgr({ req, res }, { keys, secure }).get(name, {
     signed,
   })
 
-  return cookieVal ? compressDecodeSync(cookieVal) : undefined
+  console.log('ENDING cookievalue', cookieVal)
+
+  return cookieVal ? decoder(cookieVal) : undefined
 }
 
 export const setCookie = (
@@ -229,7 +239,7 @@ export const setCookie = (
     valToSet =
       cookieVal == null
         ? undefined
-        : compressEncodeSync(`${cookieVal}|-|${signatureValue}`)
+        : encoder(`${cookieVal}|-|${signatureValue}`)
 
     cookies.set(name, valToSet, {
       domain,
