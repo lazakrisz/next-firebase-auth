@@ -10,6 +10,14 @@ Simple Firebase authentication for all Next.js rendering strategies.
 
 #### [Demo](#demo) • [Alternatives](#when-not-to-use-this-package) • [Getting Started](#get-started) • [API](#api) • [Config](#config) • [Types](#types) • [Migrating to v1](./MIGRATION.md) • [Examples](./EXAMPLES.md) • [Troubleshooting](#troubleshooting) • [Contributing](./CONTRIBUTING.md)
 
+## Why the fork?
+
+Forked from: [original](https://github.com/gladly-team/next-firebase-auth), all credits go to the original authors!
+
+Works on Firebase Hosting with signed cookies due to the `__session` limitations of Firebase Hosting.
+
+Also has the ability to compress the cookies using `zlib` compression. I've run into issues where the cookies would get quite large when a user has custom profile image and additional custom claims added to their id token, and setting the cookies would get discarded by the browser due to the 4kb cookie limit. (on Firebase Hosting splitting cookies is not possible unfortunately)
+
 ## What It Does
 
 This package makes it simple to get the authenticated Firebase user and ID token during both client-side and server-side rendering (SSR).
@@ -48,7 +56,7 @@ Depending on your app's needs, other approaches might work better for you.
    - _Pros:_ It removes this package as a dependency.
    - _Cons:_ You won't have access to the Firebase ID token server side, so you won't be able to access other Firebase services. You'll need to implement the logic for verifying the session and managing the session state.
 
-**If your app needs a generalized authentication solution**—not specifically Firebase authentication—you could consider using [NextAuth.js](https://github.com/nextauthjs/next-auth). NextAuth.js does *not* use Firebase authentication but supports a wide variety of identity providers, including Google. [Read more here](https://github.com/gladly-team/next-firebase-auth/discussions/522#discussioncomment-3336440) about the differences between `next-firebase-auth` and NextAuth.js to see which works best for your needs.
+**If your app needs a generalized authentication solution**—not specifically Firebase authentication—you could consider using [NextAuth.js](https://github.com/nextauthjs/next-auth). NextAuth.js does _not_ use Firebase authentication but supports a wide variety of identity providers, including Google. [Read more here](https://github.com/gladly-team/next-firebase-auth/discussions/522#discussioncomment-3336440) about the differences between `next-firebase-auth` and NextAuth.js to see which works best for your needs.
 
 **If your app uses Next.js's app router,** this package does not yet support it. You can follow progress in [#568](https://github.com/gladly-team/next-firebase-auth/issues/568).
 
@@ -203,11 +211,7 @@ Finally, use the authenticated user in a page:
 ```js
 // ./pages/demo
 import React from 'react'
-import {
-  useUser,
-  withUser,
-  withUserTokenSSR,
-} from 'next-firebase-auth'
+import { useUser, withUser, withUserTokenSSR } from 'next-firebase-auth'
 
 const Demo = () => {
   const user = useUser()
@@ -242,8 +246,9 @@ export default withUser()(Demo)
 #### `init(config)`
 
 Initializes `next-firebase-auth`, taking a [config](#config) object.
-* This **must** before calling any other method.
-* We recommend initializing the Firebase client SDK prior to calling this.
+
+- This **must** before calling any other method.
+- We recommend initializing the Firebase client SDK prior to calling this.
 
 #### `withUser({ ...options })(PageComponent)`
 
@@ -309,11 +314,7 @@ It accepts the following options:
 For example, this page will SSR for authenticated users, fetching props using their Firebase ID token, and will server-side redirect to the login page if the user is not authenticated:
 
 ```jsx
-import {
-  useUser,
-  withUser,
-  withUserTokenSSR,
-} from 'next-firebase-auth'
+import { useUser, withUser, withUserTokenSSR } from 'next-firebase-auth'
 
 const DemoPage = ({ thing }) => <div>The thing is: {thing}</div>
 
@@ -677,6 +678,7 @@ _Stuck? Search [discussions](https://github.com/gladly-team/next-firebase-auth/d
 #### Something's not working.
 
 Here are some initial steps you can take to debug problems:
+
 1. Define `onVerifyTokenError` and `onTokenRefreshError` in your config and check for any error logs.
 2. Set `debug: true` in your config and read through server-side and client-side debug logs for any helpful messages.
 3. Try the [example app](https://github.com/gladly-team/next-firebase-auth/tree/v1.x/example) with your own Firebase credentials.

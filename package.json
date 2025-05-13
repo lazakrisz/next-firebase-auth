@@ -1,5 +1,5 @@
 {
-  "name": "next-firebase-auth",
+  "name": "@lazakrisz/next-firebase-auth",
   "version": "1.4.0",
   "description": "Simple Firebase authentication for all Next.js rendering strategies",
   "keywords": [
@@ -16,8 +16,8 @@
   "bin": {
     "codemod": "./build/codemod/codemod.js"
   },
-  "repository": "git@github.com:gladly-team/next-firebase-auth.git",
-  "author": "Gladly Team",
+  "repository": "https://github.com/lazakrisz/next-firebase-auth",
+  "author": "Gladly Team, lazakrisz",
   "license": "MIT",
   "scripts": {
     "build": "npm-run-all -s build:clean build:src build:types-declaration",
