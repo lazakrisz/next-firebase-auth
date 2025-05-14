@@ -96,7 +96,6 @@ export const getCookie = (
 
   // old behavior
   if (!merged) {
-    console.log('cookie cookie cookie', req.headers.cookie)
     // https://github.com/pillarjs/cookies#cookiesget-name--options--
     const cookieVal = cookies.get(name, { signed })
     return cookieVal ? decoder(cookieVal) : undefined
@@ -105,12 +104,10 @@ export const getCookie = (
   // we restore the cookie here. using unsigned because otherwise it checks if using signed or not
   const cookie = cookies.get(name, { signed: false })
   const cookieValue = cookie ? decoder(cookie) : undefined
-  console.log('cookievalue cookie value', cookieValue)
   const separator = '|-|'
 
   const hasSeparator = cookieValue?.includes(separator)
 
-  console.log('hasSeparator', hasSeparator)
   // if the cookie value has no separator we fall back to the old way
   if (!hasSeparator) {
     // https://github.com/pillarjs/cookies#cookiesget-name--options--
@@ -132,8 +129,6 @@ export const getCookie = (
 
   const encoder = compression ? compressEncodeSync : encodeBase64
 
-  console.log('oldcookie', cookie, encoder(primaryCookieValue))
-
   // restore the signature onto the cookie
   const oldCookie = `${name}=${cookie}`
   const newCookie = `${name}=${
@@ -146,14 +141,10 @@ export const getCookie = (
     req.headers.cookie += ` ${name}.sig=${signature};`
   }
 
-  console.log('current cookie headers', req.headers.cookie)
-
   // https://github.com/pillarjs/cookies#cookiesget-name--options--
   const cookieVal = createCookieMgr({ req, res }, { keys, secure }).get(name, {
     signed,
   })
-
-  console.log('ENDING cookievalue', cookieVal)
 
   return cookieVal ? decoder(cookieVal) : undefined
 }

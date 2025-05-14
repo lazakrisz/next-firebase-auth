@@ -187,6 +187,9 @@ describe('setAuthCookies', () => {
             sameSite: 'strict',
             secure: true,
             signed: true,
+            merged: false,
+            compression: false,
+            name: 'SomeName',
           }
         )
       },
@@ -230,6 +233,9 @@ describe('setAuthCookies', () => {
             sameSite: 'strict',
             secure: true,
             signed: true,
+            merged: false,
+            compression: false,
+            name: 'SomeName',
           }
         )
       },
