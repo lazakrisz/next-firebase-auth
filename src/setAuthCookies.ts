@@ -60,7 +60,11 @@ const setAuthCookies: SetAuthCookies = async (
     sameSite,
     secure,
     signed,
+    merged,
+    compression,
+    name,
   }) => ({
+    name,
     domain,
     httpOnly,
     keys,
@@ -70,44 +74,59 @@ const setAuthCookies: SetAuthCookies = async (
     sameSite,
     secure,
     signed,
+    merged,
+    compression,
   }))(getConfig().cookies)
 
-  // Store the ID and refresh tokens in a cookie. This
-  // cookie will be available to future requests to pages,
-  // providing a valid Firebase ID token (refreshed as needed)
-  // for server-side rendering.
-  setCookie(
-    getUserTokensCookieName(),
-    // Note: any change to cookie data structure needs to be
-    // backwards-compatible.
-    JSON.stringify({
-      idToken,
-      refreshToken,
-    }),
-    { req, res },
-    cookieOptions
-  )
+  if (!cookieOptions.merged) {
+    // Store the ID and refresh tokens in a cookie. This
+    // cookie will be available to future requests to pages,
+    // providing a valid Firebase ID token (refreshed as needed)
+    // for server-side rendering.
+    setCookie(
+      getUserTokensCookieName(),
+      // Note: any change to cookie data structure needs to be
+      // backwards-compatible.
+      JSON.stringify({
+        idToken,
+        refreshToken,
+      }),
+      { req, res },
+      cookieOptions
+    )
 
-  // Store the user data. This cookie will be available
-  // to future requests to pages, providing the user data. It
-  // will *not* include a Firebase ID token, because it may have
-  // expired, but provides the user data without any
-  // additional server-side requests.
-  setCookie(
-    getUserCookieName(),
-    // Note: any change to cookie data structure needs to be
-    // backwards-compatible.
-    // Don't include the token in the user cookie, because
-    // the token should only be used from the "userTokens"
-    // cookie. Here, it is redundant information, and we don't
-    // want the token to be used if it's expired.
-    user.serialize({ includeToken: false }),
-    {
-      req,
-      res,
-    },
-    cookieOptions
-  )
+    // Store the user data. This cookie will be available
+    // to future requests to pages, providing the user data. It
+    // will *not* include a Firebase ID token, because it may have
+    // expired, but provides the user data without any
+    // additional server-side requests.
+    setCookie(
+      getUserCookieName(),
+      // Note: any change to cookie data structure needs to be
+      // backwards-compatible.
+      // Don't include the token in the user cookie, because
+      // the token should only be used from the "userTokens"
+      // cookie. Here, it is redundant information, and we don't
+      // want the token to be used if it's expired.
+      user.serialize({ includeToken: false }),
+      {
+        req,
+        res,
+      },
+      cookieOptions
+    )
+  } else {
+    setCookie(
+      cookieOptions.name,
+      JSON.stringify({
+        idToken,
+        refreshToken,
+        user: user.serialize({ includeToken: false }),
+      }),
+      { req, res },
+      cookieOptions
+    )
+  }
 
   if (user.id) {
     logDebug('[setAuthCookies] Set auth cookies for an authenticated user.')
