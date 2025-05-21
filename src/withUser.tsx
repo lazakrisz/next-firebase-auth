@@ -88,7 +88,7 @@ const withUser: WithUser =
       /* eslint-disable global-require, no-var, vars-on-top, @typescript-eslint/no-var-requires */
       var React = require('react')
       var { useEffect, useCallback, useMemo } = require('react')
-      var { useRouter } = require('next/router')
+      var { useRouter } = require('next/compat/router')
       var { UserContext } = require('src/useUser')
       /* eslint-enable global-require, no-var, vars-on-top, @typescript-eslint/no-var-requires */
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
