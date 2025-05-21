@@ -1,6 +1,6 @@
 import { testApiHandler } from 'next-test-api-route-handler'
 import getUserFromCookies from 'src/getUserFromCookies'
-import { setConfig } from 'src/config'
+import { getConfig, setConfig } from 'src/config'
 import getMockConfig from 'src/testHelpers/createMockConfig'
 import { createMockFirebaseUserAdminSDK } from 'src/testHelpers/userInputs'
 import createUser from 'src/createUser'
@@ -14,6 +14,9 @@ import {
 } from 'src/authCookies'
 import logDebug from 'src/logDebug'
 import { NextApiRequest } from 'next'
+import Keygrip from 'keygrip'
+import { compressEncodeSync, encodeBase64 } from 'src/encoding'
+import initFirebaseAdminSDK from 'src/initFirebaseAdminSDK'
 
 /**
  * We intentionally don't mock a few modules whose behavior we want to
@@ -26,6 +29,8 @@ jest.mock('src/firebaseAdmin')
 jest.mock('src/authCookies')
 jest.mock('src/isClientSide')
 jest.mock('src/logDebug')
+jest.mock('src/config')
+jest.mock('src/initFirebaseAdminSDK')
 
 const mockGetCookie = jest.mocked(getCookie)
 const mockVerifyIdToken = verifyIdToken as jest.Mock
@@ -34,6 +39,38 @@ const mockGetUserSigCookieName = jest.mocked(getUserSigCookieName)
 const mockGetUserTokensCookieName = jest.mocked(getUserTokensCookieName)
 const mockGetUserTokensSigCookieName = jest.mocked(getUserTokensSigCookieName)
 const mockLogDebug = jest.mocked(logDebug)
+const mockGetConfig = getConfig as jest.Mock
+const mockInitFirebaseAdminSDK = jest.mocked(initFirebaseAdminSDK)
+
+const getSignature = (
+  cookieValue: any,
+  keys: string[],
+  name: string,
+  compress: boolean = false
+) => {
+  const keygrip = new Keygrip(keys)
+
+  if (compress) {
+    const compressed = compressEncodeSync(
+      typeof cookieValue === 'string'
+        ? cookieValue
+        : JSON.stringify(cookieValue)
+    )
+    const data = `${name}=${compressed}`
+    const sig = keygrip.sign(data)
+
+    return sig
+  } else {
+    const data = `${name}=${encodeBase64(
+      typeof cookieValue === 'string'
+        ? cookieValue
+        : JSON.stringify(cookieValue)
+    )}`
+    const sig = keygrip.sign(data)
+
+    return sig
+  }
+}
 
 beforeEach(() => {
   // This is always called server-side.
@@ -184,7 +221,13 @@ describe('getUserFromCookies: with ID token', () => {
       {
         req: mockReq,
       },
-      { keys: ['aaa', 'bbb'], signed: true, secure: false }
+      {
+        keys: ['aaa', 'bbb'],
+        signed: true,
+        secure: false,
+        merged: false,
+        compression: false,
+      }
     )
   })
 
@@ -546,7 +589,13 @@ describe('getUserFromCookies: *without* ID token', () => {
       {
         req: mockReq,
       },
-      { keys: ['aaa', 'bbb'], signed: true, secure: false }
+      {
+        keys: ['aaa', 'bbb'],
+        signed: true,
+        secure: false,
+        merged: false,
+        compression: false,
+      }
     )
   })
 

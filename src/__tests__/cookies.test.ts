@@ -30,6 +30,7 @@ import MockDate from 'mockdate'
 import { testApiHandler } from 'next-test-api-route-handler'
 import setCookieParser from 'set-cookie-parser'
 import { compressEncodeSync, encodeBase64 } from 'src/encoding'
+import Keygrip from 'keygrip'
 
 /**
  * this is how we can get keygrip keys: 
@@ -85,6 +86,36 @@ const createSetCookieOptions = () => ({
 })
 
 const createDeleteCookieOptions = createSetCookieOptions
+
+const getSignature = (
+  cookieValue: any,
+  keys: string[],
+  name: string,
+  compress: boolean = false
+) => {
+  const keygrip = new Keygrip(keys)
+
+  if (compress) {
+    const compressed = compressEncodeSync(
+      typeof cookieValue === 'string'
+        ? cookieValue
+        : JSON.stringify(cookieValue)
+    )
+    const data = `${name}=${compressed}`
+    const sig = keygrip.sign(data)
+
+    return sig
+  } else {
+    const data = `${name}=${encodeBase64(
+      typeof cookieValue === 'string'
+        ? cookieValue
+        : JSON.stringify(cookieValue)
+    )}`
+    const sig = keygrip.sign(data)
+
+    return sig
+  }
+}
 
 /**
  * START: getCookie tests
@@ -1994,6 +2025,212 @@ describe('cookies: deleteCookie', () => {
           path: '/pizza',
           sameSite: 'lax',
           secure: true,
+        })
+      },
+    })
+  })
+})
+describe('cookies: getCookie (merged option)', () => {
+  it('returns the expected value for merged unsigned cookie', async () => {
+    expect.assertions(1)
+    const MOCK_COOKIE_NAME = 'mergedCookie'
+    const MOCK_COOKIE_VAL = { foo: 'bar' }
+    await testApiHandler({
+      handler: async (req, res) => {
+        const { getCookie } = require('src/cookies')
+        const val = getCookie(
+          MOCK_COOKIE_NAME,
+          { req, res },
+          { merged: true, signed: false }
+        )
+        expect(JSON.parse(val)).toEqual(MOCK_COOKIE_VAL)
+        return res.status(200).end()
+      },
+      test: async ({ fetch }) => {
+        await fetch({
+          headers: {
+            cookie: `${MOCK_COOKIE_NAME}=${encodeBase64(
+              JSON.stringify(MOCK_COOKIE_VAL)
+            )};`,
+          },
+        })
+      },
+    })
+  })
+
+  it('returns the expected value for merged unsigned cookie with compression', async () => {
+    expect.assertions(1)
+    const MOCK_COOKIE_NAME = 'mergedCookie'
+    const MOCK_COOKIE_VAL = { foo: 'bar' }
+    await testApiHandler({
+      handler: async (req, res) => {
+        const { getCookie } = require('src/cookies')
+
+        const val = getCookie(
+          MOCK_COOKIE_NAME,
+          { req, res },
+          { merged: true, signed: false, compression: true }
+        )
+        expect(JSON.parse(val)).toEqual(MOCK_COOKIE_VAL)
+        return res.status(200).end()
+      },
+      test: async ({ fetch }) => {
+        await fetch({
+          headers: {
+            cookie: `${MOCK_COOKIE_NAME}=${compressEncodeSync(
+              JSON.stringify(MOCK_COOKIE_VAL)
+            )};`,
+          },
+        })
+      },
+    })
+  })
+
+  it('returns the expected value for merged signed cookie with valid signature', async () => {
+    expect.assertions(1)
+    const MOCK_COOKIE_NAME = 'mergedSigned'
+    const MOCK_COOKIE_VAL = 'abc123'
+    const MOCK_COOKIE_SIG_VAL = getSignature(
+      MOCK_COOKIE_VAL,
+      ['some-key'],
+      MOCK_COOKIE_NAME
+    )
+    await testApiHandler({
+      handler: async (req, res) => {
+        const { getCookie } = require('src/cookies')
+
+        const val = getCookie(
+          MOCK_COOKIE_NAME,
+          { req, res },
+          { merged: true, signed: true, keys: ['some-key'] }
+        )
+        expect(val).toEqual(MOCK_COOKIE_VAL)
+        return res.status(200).end()
+      },
+      test: async ({ fetch }) => {
+        // merged cookie: value|-|signature, base64 encoded
+        const mergedVal = `${MOCK_COOKIE_VAL}|-|${MOCK_COOKIE_SIG_VAL}`
+        await fetch({
+          headers: {
+            cookie: `${MOCK_COOKIE_NAME}=${encodeBase64(mergedVal)};`,
+          },
+        })
+      },
+    })
+  })
+
+  it('returns undefined for merged signed cookie with invalid signature', async () => {
+    expect.assertions(1)
+    const MOCK_COOKIE_NAME = 'mergedSigned'
+    const MOCK_COOKIE_VAL = 'abc123'
+    const INVALID_SIG = 'invalidsig'
+    await testApiHandler({
+      handler: async (req, res) => {
+        const { getCookie } = require('src/cookies')
+
+        const val = getCookie(
+          MOCK_COOKIE_NAME,
+          { req, res },
+          { merged: true, signed: true, keys: ['some-key'] }
+        )
+        expect(val).toBeUndefined()
+        return res.status(200).end()
+      },
+      test: async ({ fetch }) => {
+        const mergedVal = `${MOCK_COOKIE_VAL}|-|${INVALID_SIG}`
+        await fetch({
+          headers: {
+            cookie: `${MOCK_COOKIE_NAME}=${encodeBase64(mergedVal)};`,
+          },
+        })
+      },
+    })
+  })
+
+  it('returns undefined for merged signed cookie with missing signature', async () => {
+    expect.assertions(1)
+    const MOCK_COOKIE_NAME = 'mergedSigned'
+    const MOCK_COOKIE_VAL = 'abc123'
+    await testApiHandler({
+      handler: async (req, res) => {
+        const { getCookie } = require('src/cookies')
+
+        const val = getCookie(
+          MOCK_COOKIE_NAME,
+          { req, res },
+          { merged: true, signed: true, keys: ['some-key'] }
+        )
+        expect(val).toBeUndefined()
+        return res.status(200).end()
+      },
+      test: async ({ fetch }) => {
+        // No signature part
+        await fetch({
+          headers: {
+            cookie: `${MOCK_COOKIE_NAME}=${encodeBase64(MOCK_COOKIE_VAL)};`,
+          },
+        })
+      },
+    })
+  })
+
+  it('returns the expected value for merged signed cookie with compression and valid signature', async () => {
+    expect.assertions(1)
+    const MOCK_COOKIE_NAME = 'mergedSigned'
+    const MOCK_COOKIE_VAL = 'abc123'
+    const MOCK_COOKIE_SIG_VAL = getSignature(
+      MOCK_COOKIE_VAL,
+      ['some-key'],
+      MOCK_COOKIE_NAME,
+      true
+    )
+
+    await testApiHandler({
+      handler: async (req, res) => {
+        const { getCookie } = require('src/cookies')
+
+        const val = getCookie(
+          MOCK_COOKIE_NAME,
+          { req, res },
+          { merged: true, signed: true, keys: ['some-key'], compression: true }
+        )
+        expect(val).toEqual(MOCK_COOKIE_VAL)
+        return res.status(200).end()
+      },
+      test: async ({ fetch }) => {
+        const mergedVal = `${MOCK_COOKIE_VAL}|-|${MOCK_COOKIE_SIG_VAL}`
+        await fetch({
+          headers: {
+            cookie: `${MOCK_COOKIE_NAME}=${compressEncodeSync(mergedVal)};`,
+          },
+        })
+      },
+    })
+  })
+
+  it('returns undefined for merged signed cookie with compression and invalid signature', async () => {
+    expect.assertions(1)
+    const MOCK_COOKIE_NAME = 'mergedSigned'
+    const MOCK_COOKIE_VAL = 'abc123'
+    const INVALID_SIG = 'invalidsig'
+    await testApiHandler({
+      handler: async (req, res) => {
+        const { getCookie } = require('src/cookies')
+
+        const val = getCookie(
+          MOCK_COOKIE_NAME,
+          { req, res },
+          { merged: true, signed: true, keys: ['some-key'], compression: true }
+        )
+        expect(val).toBeUndefined()
+        return res.status(200).end()
+      },
+      test: async ({ fetch }) => {
+        const mergedVal = `${MOCK_COOKIE_VAL}|-|${INVALID_SIG}`
+        await fetch({
+          headers: {
+            cookie: `${MOCK_COOKIE_NAME}=${compressEncodeSync(mergedVal)};`,
+          },
         })
       },
     })
