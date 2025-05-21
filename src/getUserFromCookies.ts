@@ -54,7 +54,7 @@ const getUserFromCookies: GetUserFromCookies = async ({
   authCookieValue,
   authCookieSigValue,
 }: GetUserFromCookiesOptions) => {
-  const { keys, secure, signed } = getConfig().cookies
+  const { keys, secure, signed, compression, merged } = getConfig().cookies
   let user
 
   // Make sure the Firebase Admin SDK is initialized.
@@ -112,7 +112,7 @@ const getUserFromCookies: GetUserFromCookies = async ({
       {
         req,
       },
-      { keys, secure, signed }
+      { keys, secure, signed, compression, merged }
     )
     const {
       idToken,
@@ -149,7 +149,7 @@ const getUserFromCookies: GetUserFromCookies = async ({
       {
         req,
       },
-      { keys, secure, signed }
+      { keys, secure, signed, compression, merged }
     )
     if (cookieValStr) {
       logDebug(
