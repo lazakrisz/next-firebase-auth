@@ -118,7 +118,7 @@ export const getCookie = (
   const replaced = req.headers.cookie?.replace(oldCookie, newCookie)
   if (req.headers.cookie) {
     req.headers.cookie = replaced
-    req.headers.cookie += `${name}.sig=${signature};`
+    req.headers.cookie += `;${name}.sig=${signature};`
   }
 
   // https://github.com/pillarjs/cookies#cookiesget-name--options--
